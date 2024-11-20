@@ -18,7 +18,6 @@ const TicketSchema = new mongoose.Schema({
     
    qrCode: {
     type: String,
-    required: true
 },
 isValid:{
     type: Boolean,

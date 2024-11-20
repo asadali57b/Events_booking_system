@@ -6,6 +6,8 @@ const bcrypt=require("bcrypt");
 const QRCode = require('qrcode');
 const {sendTicketEmail}=require("../utils/sendEmail");
 const {signinSchema,SignupSchema}=require('../utils/validation')
+const { generateTicketImage } = require('../utils/ticketImage'); 
+
 
 exports.createUser=async(req,res)=>{
   const {name,email,password}=req.body;
@@ -137,7 +139,7 @@ exports.purchaseTicket = async (req, res) => {
 
     await ticket.save();
 
-    // Decrement ticket availability
+    
     event.ticketsAvailable -= 1;
     await event.save();
 
@@ -150,11 +152,11 @@ exports.purchaseTicket = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
 exports.validateTicket = async (req, res) => {
   try {
     const { qrCodeContent } = req.body;
 
-    // Find the ticket by QR code
     const ticket = await Ticket.findOne({ qrCode: qrCodeContent });
     if (!ticket) {
       return res.status(404).json({
@@ -163,7 +165,6 @@ exports.validateTicket = async (req, res) => {
       });
     }
 
-    // Check if the ticket is already used
     if (!ticket.isValid) {
       return res.status(400).json({
         success: false,
@@ -179,13 +180,15 @@ exports.validateTicket = async (req, res) => {
       console.warn(`User or email not found for userId: ${ticket.userId}`);
     } else {
       try {
+        const ticketImage = await generateTicketImage(ticket.ticketDetails);
+
         await sendTicketEmail(
           user.email,
           ticket.ticketDetails.name,
           ticket.ticketDetails.location,
           ticket.ticketDetails.date,
           ticket.ticketDetails.price,
-          ticket.qrCode
+          ticketImage
         );
         console.log(`Validation email sent to: ${user.email}`);
       } catch (emailError) {
